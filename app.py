@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import yfinance as yf
+import requests
+import openai
 
 st.set_page_config(page_title="AI Stock Monitor & Shadow Portfolio", layout="wide", initial_sidebar_state="expanded")
 
@@ -24,14 +26,26 @@ def fetch_price(ticker):
         return None
 
 def format_ticker(ticker):
-    # US tickers: as-is
-    # HK tickers: append .HK if not present
-    # SZ tickers: append .SZ if not present
     if ticker.endswith(".HK") or ticker.endswith(".SZ") or ticker.endswith(".SS"):
         return ticker
     if ticker.isalpha():
         return ticker
     return ticker
+
+def fetch_ai_news():
+    NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
+    NEWS_ENDPOINT = "https://newsapi.org/v2/everything"
+    QUERY = "artificial intelligence OR AI OR machine learning OR generative AI"
+    params = {
+        "q": QUERY,
+        "sortBy": "publishedAt",
+        "language": "en",
+        "pageSize": 5,
+        "apiKey": NEWS_API_KEY,
+    }
+    response = requests.get(NEWS_ENDPOINT, params=params)
+    data = response.json()
+    return data.get("articles", [])
 
 portfolio = load_portfolio()
 ai_universe = load_universe()
@@ -55,14 +69,12 @@ with tab1:
         ticker = format_ticker(row['Ticker'])
         price = fetch_price(ticker)
 
-        # Manual override for Palantir to avoid inflated values
         if ticker == "PLTR":
-            live_price_inr = 1670  # Adjust this to the correct INR price for Palantir
+            live_price_inr = 1670  # Adjust this to the correct INR price for Palantir if you want
         else:
             if price is None or price <= 0:
                 live_price_inr = row['Buy Price (INR)']
             else:
-                # Convert USD to INR for US tickers
                 if ticker.endswith(".HK") or ticker.endswith(".SZ") or ticker.endswith(".SS"):
                     live_price_inr = price
                 else:
@@ -110,14 +122,36 @@ with tab2:
 
 with tab3:
     st.header("Research & Insights")
-    st.markdown("""
-    - **News headlines:** Add manually or use an RSS feed/news API in the future.
-    - **Stock notes:** Jot down research, triggers, or macro news per stock.
-    - **GPT-style analysis:** (Add via OpenAI API for summaries in future versions.)
-    """)
-    note = st.text_area("Write a research note or paste key news here", "")
-    if st.button("Save note"):
-        st.success("Note saved (not persistent in demo)")
+
+    articles = fetch_ai_news()
+    st.subheader("Latest AI News")
+    for article in articles:
+        st.markdown(f"### [{article['title']}]({article['url']})")
+        st.write(article.get("description", "No description available."))
+
+        if st.button(f"Summarize: {article['title']}", key=article['url']):
+            openai.api_key = st.secrets["OPENAI_API_KEY"]
+            prompt = f"Summarize this news article:\n\nTitle: {article['title']}\nDescription: {article.get('description','')}"
+            with st.spinner("Generating summary..."):
+                try:
+                    response = openai.ChatCompletion.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7,
+                        max_tokens=200,
+                    )
+                    summary = response.choices[0].message.content
+                    st.write(summary)
+                except Exception as e:
+                    st.error(f"OpenAI API error: {e}")
+
+    st.markdown("---")
+    st.subheader("Your Research Notes")
+    note = st.text_area("Write notes or paste research here")
+
+    if st.button("Save Note"):
+        st.session_state['research_note'] = note
+        st.success("Note saved (session only)")
 
 st.markdown("---")
 st.caption("Built by Kedar + ChatGPT | v1.0")
