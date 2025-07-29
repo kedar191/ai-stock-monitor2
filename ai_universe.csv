@@ -1,0 +1,13 @@
+Stock,Ticker,Region,Barbell,Segment,Market Cap (B USD),Last Price,YTD %,P/E,Watchlist
+NVIDIA,NVDA,US,Core,Infra,3200,120,195,34,Yes
+Microsoft,MSFT,US,Core,Platform,3000,350,28,36,Yes
+Google,GOOGL,US,Core,Platform,2200,140,32,31,
+Amazon,AMZN,US,Core,Infra,1800,130,17,62,
+Tencent,0700.HK,China,Core,Platform,400,320,8,12,Yes
+Baidu,BIDU,China,Core,Platform,40,110,15,12,
+Palantir,PLTR,US,Emerging,Apps,50,25,65,62,Yes
+Adobe,ADBE,US,Emerging,Apps,230,500,15,40,
+CrowdStrike,CRWD,US,Emerging,Enabler,95,380,30,62,
+iFlytek,002230.SZ,China,Emerging,Apps,15,45,27,70,
+C3.ai,AI,US,Moonshot,Apps,3,30,10,N/A,Yes
+UiPath,PATH,US,Moonshot,Apps,12,22,18,N/A,Yes
