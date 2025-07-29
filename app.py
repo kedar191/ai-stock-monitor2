@@ -68,9 +68,6 @@ with tab1:
                 else:
                     live_price_inr = price * USDINR
 
-        # Debug output
-        st.write(f"Ticker: {ticker}, Raw price: {price}, Converted INR price: {live_price_inr}")
-
         current_prices.append(live_price_inr)
         total_value += live_price_inr * row['Units']
 
