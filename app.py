@@ -13,6 +13,27 @@ def load_portfolio():
 def load_universe():
     return pd.read_csv("ai_universe.csv")
 
+def fetch_price(ticker):
+    try:
+        data = yf.Ticker(ticker)
+        price = data.history(period="1d")["Close"].values[-1]
+        if price <= 0:
+            raise ValueError("Invalid price fetched")
+        return price
+    except Exception:
+        return None
+
+def format_ticker(ticker):
+    # US tickers: as-is
+    # HK tickers: append .HK if not present
+    # SZ tickers: append .SZ if not present
+    if ticker.endswith(".HK") or ticker.endswith(".SZ") or ticker.endswith(".SS"):
+        return ticker
+    if ticker.isalpha():
+        return ticker
+    # Fallback: return as-is
+    return ticker
+
 portfolio = load_portfolio()
 ai_universe = load_universe()
 
@@ -28,23 +49,23 @@ with tab1:
     kpi1.metric("Total Invested (₹)", f"{total_invested:,.0f}")
     total_value = 0
     current_prices = []
-    USDINR = 83.5  # Adjust if needed
-    
+    USDINR = 83.5  # Update this rate as needed
+
     for i, row in portfolio.iterrows():
-        try:
-            ticker = row['Ticker']
-            data = yf.Ticker(ticker)
-            live_price = data.history(period="1d")["Close"].values[-1]
+        ticker = format_ticker(row['Ticker'])
+        price = fetch_price(ticker)
+        if price is None:
+            # Fallback to buy price in INR converted to USD for US stocks or as is for others
+            price = row['Buy Price (INR)']
+        else:
             # Convert USD prices to INR if ticker is US
-            if ticker.endswith(".SZ") or ticker.endswith(".HK"):
-                live_price_inr = live_price
+            if ticker.endswith(".HK") or ticker.endswith(".SZ") or ticker.endswith(".SS"):
+                price = price
             else:
-                live_price_inr = live_price * USDINR
-            current_prices.append(live_price_inr)
-            total_value += live_price_inr * row['Units']
-        except Exception:
-            current_prices.append(row['Buy Price (INR)'])
-            total_value += row['Buy Price (INR)'] * row['Units']
+                price = price * USDINR
+
+        current_prices.append(price)
+        total_value += price * row['Units']
 
     kpi2.metric("Current Value (est, ₹)", f"{int(total_value):,}")
     gain = total_value - total_invested
