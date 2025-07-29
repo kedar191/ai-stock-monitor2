@@ -31,7 +31,6 @@ def format_ticker(ticker):
         return ticker
     if ticker.isalpha():
         return ticker
-    # Fallback: return as-is
     return ticker
 
 portfolio = load_portfolio()
@@ -42,6 +41,8 @@ st.markdown("Track, analyze, and research the best AI investment opportunities (
 
 tab1, tab2, tab3 = st.tabs(["📊 Portfolio", "👀 AI Stock Monitor", "📝 Research & Insights"])
 
+USDINR = 83.5  # Update this as needed
+
 with tab1:
     st.header("Your Shadow AI Portfolio")
     kpi1, kpi2, kpi3 = st.columns(3)
@@ -49,23 +50,29 @@ with tab1:
     kpi1.metric("Total Invested (₹)", f"{total_invested:,.0f}")
     total_value = 0
     current_prices = []
-    USDINR = 83.5  # Update this rate as needed
 
     for i, row in portfolio.iterrows():
         ticker = format_ticker(row['Ticker'])
         price = fetch_price(ticker)
-        if price is None:
-            # Fallback to buy price in INR converted to USD for US stocks or as is for others
-            price = row['Buy Price (INR)']
-        else:
-            # Convert USD prices to INR if ticker is US
-            if ticker.endswith(".HK") or ticker.endswith(".SZ") or ticker.endswith(".SS"):
-                price = price
-            else:
-                price = price * USDINR
 
-        current_prices.append(price)
-        total_value += price * row['Units']
+        # Manual override for Palantir to avoid inflated values
+        if ticker == "PLTR":
+            live_price_inr = 1670  # Adjust this to the correct INR price for Palantir
+        else:
+            if price is None or price <= 0:
+                live_price_inr = row['Buy Price (INR)']
+            else:
+                # Convert USD to INR for US tickers
+                if ticker.endswith(".HK") or ticker.endswith(".SZ") or ticker.endswith(".SS"):
+                    live_price_inr = price
+                else:
+                    live_price_inr = price * USDINR
+
+        # Debug output
+        st.write(f"Ticker: {ticker}, Raw price: {price}, Converted INR price: {live_price_inr}")
+
+        current_prices.append(live_price_inr)
+        total_value += live_price_inr * row['Units']
 
     kpi2.metric("Current Value (est, ₹)", f"{int(total_value):,}")
     gain = total_value - total_invested
@@ -91,7 +98,7 @@ with tab2:
     if search:
         search = search.lower()
         filtered = ai_universe[ai_universe.apply(lambda row: search in str(row['Stock']).lower() or search in str(row['Ticker']).lower(), axis=1)]
-    
+
     def undervalued(row):
         try:
             return float(row['P/E']) < 20
@@ -100,7 +107,7 @@ with tab2:
     filtered['Undervalued'] = filtered.apply(undervalued, axis=1)
     filtered['High Momentum'] = filtered['YTD %'] > 30
     st.dataframe(filtered, use_container_width=True)
-    
+
     pie2 = px.pie(filtered, names='Region', title="Universe by Region")
     st.plotly_chart(pie2, use_container_width=True)
 
