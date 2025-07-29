@@ -133,7 +133,8 @@ with tab3:
             openai.api_key = st.secrets["OPENAI_API_KEY"]
             prompt = f"Summarize this news article:\n\nTitle: {article['title']}\nDescription: {article.get('description','')}"
             with st.spinner("Generating summary..."):
-                try:response = openai.chat.completions.create(
+                try:
+                    response = openai.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.7,
